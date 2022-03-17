@@ -24,6 +24,8 @@ type InputProcessor struct {
 	highBound     int
 	closeBrackets int
 	openBracket   int
+	pi            string
+	e             string
 }
 
 func DoProcessing(ip *InputProcessor) {
@@ -35,6 +37,9 @@ func DoProcessing(ip *InputProcessor) {
 		"ошибка в записи числа.",
 		"на ноль делить нельзя.",
 	}
+
+	ip.pi = "3.141592653589793"
+	ip.e = "2.718281828459045"
 
 	for {
 		ip.errNo = 0
@@ -54,8 +59,51 @@ func (ip *InputProcessor) valueProcessing() {
 	ip.deleteWhitespaces()
 	ip.deleteLineFeeds()
 	ip.checkUserWantQuit()
+	ip.constantConverter()
 	if !(ip.hasWrongChars()) {
 		ip.calculateBrackets()
+	}
+}
+
+func (ip *InputProcessor) constantConverter() {
+	var piCount, eCount int
+
+	for i := 0; i < len(ip.value)-1; i++ {
+		char1 := string(ip.value[i])
+		char2 := string(ip.value[i+1])
+		if (char1 == "p") || (char2 == "i") {
+			piCount++
+		}
+	}
+
+	for i := 0; i < len(ip.value); i++ {
+		char1 := string(ip.value[i])
+		if char1 == "e" {
+			eCount++
+		}
+	}
+
+	for piCount > 0 {
+		for i := 0; i < len(ip.value)-1; i++ {
+			char1 := string(ip.value[i])
+			char2 := string(ip.value[i+1])
+			if (char1 == "p") || (char2 == "i") {
+				ip.value = ip.value[:i] + ip.pi + ip.value[i+2:]
+				break
+			}
+		}
+		piCount--
+	}
+
+	for eCount > 0 {
+		for i := 0; i < len(ip.value); i++ {
+			char1 := string(ip.value[i])
+			if char1 == "e" {
+				ip.value = ip.value[:i] + ip.e + ip.value[i+1:]
+				break
+			}
+		}
+		eCount--
 	}
 }
 
