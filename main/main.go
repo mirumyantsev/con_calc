@@ -31,8 +31,6 @@ func (ip *InputProcessor) valueProcessing() {
 	ip.deleteLineFeeds()
 	ip.checkUserWantQuit()
 	ip.calculationCycles()
-
-	// ip.value = ip.doBinaryOp(ip.value)
 }
 
 func (ip *InputProcessor) calculationCycles() {
@@ -66,7 +64,6 @@ func (ip *InputProcessor) performHighOp() {
 	for j := 0; j < lenOfValue; j++ {
 		char := string(ip.value[j])
 		if (char == "*") || (char == "/") {
-
 			for i = j - 1; i >= 0; i-- {
 				char := string(ip.value[i])
 				if (char == "-") || (char == "+") || (char == "*") || (char == "/") {
@@ -86,6 +83,8 @@ func (ip *InputProcessor) performHighOp() {
 				}
 			}
 			highBound = i - 1
+
+			break
 		}
 	}
 
@@ -100,7 +99,6 @@ func (ip *InputProcessor) performLowOp() {
 	for j := 0; j < lenOfValue; j++ {
 		char := string(ip.value[j])
 		if (char == "-") || (char == "+") {
-
 			for i = j - 1; i >= 0; i-- {
 				char := string(ip.value[i])
 				if (char == "-") || (char == "+") || (char == "*") || (char == "/") {
@@ -120,6 +118,8 @@ func (ip *InputProcessor) performLowOp() {
 				}
 			}
 			highBound = i - 1
+
+			break
 		}
 	}
 
