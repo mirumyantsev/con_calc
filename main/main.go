@@ -14,7 +14,8 @@ type Processing interface {
 }
 
 type InputProcessor struct {
-	value string
+	value   string
+	binExpr string
 }
 
 func DoProcessing(ip *InputProcessor) {
@@ -29,33 +30,156 @@ func (ip *InputProcessor) valueProcessing() {
 	ip.deleteWhitespaces()
 	ip.deleteLineFeeds()
 	ip.checkUserWantQuit()
-	ip.doSimpleCalc()
+	ip.calculationCycles()
+
+	// ip.value = ip.doBinaryOp(ip.value)
 }
 
-func (ip *InputProcessor) doSimpleCalc() {
-	var opPos int
+func (ip *InputProcessor) calculationCycles() {
+	lenOfValue := len(ip.value)
+	var highOps, lowOps int
 
-	for i := 0; i < len(ip.value); i++ {
+	for i := 0; i < lenOfValue; i++ {
 		char := string(ip.value[i])
+		if (char == "*") || (char == "/") {
+			highOps++
+		} else if (char == "-") || (char == "+") {
+			lowOps++
+		}
+	}
+
+	for highOps > 0 {
+		ip.performHighOp()
+		highOps--
+	}
+
+	for lowOps > 0 {
+		ip.performLowOp()
+		lowOps--
+	}
+}
+
+func (ip *InputProcessor) performHighOp() {
+	lenOfValue := len(ip.value)
+	var lowBound, highBound, i int
+
+	for j := 0; j < lenOfValue; j++ {
+		char := string(ip.value[j])
+		if (char == "*") || (char == "/") {
+
+			for i = j - 1; i >= 0; i-- {
+				char := string(ip.value[i])
+				if (char == "-") || (char == "+") || (char == "*") || (char == "/") {
+					break
+				}
+			}
+			if i > 0 {
+				lowBound = i + 1
+			} else {
+				lowBound = 0
+			}
+
+			for i = j + 1; i < lenOfValue; i++ {
+				char := string(ip.value[i])
+				if (char == "-") || (char == "+") || (char == "*") || (char == "/") {
+					break
+				}
+			}
+			highBound = i - 1
+		}
+	}
+
+	binExpr := ip.doBinaryOp(ip.value[lowBound : highBound+1])
+	ip.value = ip.value[:lowBound] + binExpr + ip.value[highBound+1:]
+}
+
+func (ip *InputProcessor) performLowOp() {
+	lenOfValue := len(ip.value)
+	var lowBound, highBound, i int
+
+	for j := 0; j < lenOfValue; j++ {
+		char := string(ip.value[j])
 		if (char == "-") || (char == "+") {
-			opPos = i
+
+			for i = j - 1; i >= 0; i-- {
+				char := string(ip.value[i])
+				if (char == "-") || (char == "+") || (char == "*") || (char == "/") {
+					break
+				}
+			}
+			if i > 0 {
+				lowBound = i + 1
+			} else {
+				lowBound = 0
+			}
+
+			for i = j + 1; i < lenOfValue; i++ {
+				char := string(ip.value[i])
+				if (char == "-") || (char == "+") || (char == "*") || (char == "/") {
+					break
+				}
+			}
+			highBound = i - 1
+		}
+	}
+
+	binExpr := ip.doBinaryOp(ip.value[lowBound : highBound+1])
+	ip.value = ip.value[:lowBound] + binExpr + ip.value[highBound+1:]
+}
+
+func (ip *InputProcessor) doBinaryOp(binExpr string) (result string) {
+	var operatorChar string
+	var operatorPos int
+	var resultf float64
+
+	for i := 0; i < len(binExpr); i++ {
+		char := string(binExpr[i])
+		if (char == "-") || (char == "+") || (char == "*") || (char == "/") {
+			operatorChar = char
+			operatorPos = i
 			break
 		}
 	}
 
-	if opPos != 0 {
-		operand1 := ip.value[:opPos]
-		operand2 := ip.value[opPos+1:]
-		operand1_f, _ := strconv.ParseFloat(operand1, 32)
-		operand2_f, _ := strconv.ParseFloat(operand2, 32)
-		fmt.Printf("%f\n", sum(operand1_f, operand2_f))
+	operand_1 := binExpr[:operatorPos]
+	operand_2 := binExpr[operatorPos+1:]
 
+	operand_1f, _ := strconv.ParseFloat(operand_1, 64)
+	operand_2f, _ := strconv.ParseFloat(operand_2, 64)
+
+	switch operatorChar {
+	case "+":
+		resultf = ip.add(operand_1f, operand_2f)
+	case "-":
+		resultf = ip.subtract(operand_1f, operand_2f)
+	case "*":
+		resultf = ip.multiply(operand_1f, operand_2f)
+	case "/":
+		resultf = ip.divide(operand_1f, operand_2f)
 	}
 
+	result = fmt.Sprintf("%.3f", resultf)
+
+	return result
 }
 
-func sum(addndm_1, addndm_2 float64) (result float64) {
-	result = addndm_1 + addndm_2
+func (ip *InputProcessor) divide(addendum_1, addendum_2 float64) (result float64) {
+	result = addendum_1 / addendum_2
+	return result
+}
+
+func (ip *InputProcessor) multiply(addendum_1, addendum_2 float64) (result float64) {
+	result = addendum_1 * addendum_2
+	return result
+}
+
+func (ip *InputProcessor) subtract(addendum_1, addendum_2 float64) (result float64) {
+	result = addendum_1 - addendum_2
+	return result
+}
+
+func (ip *InputProcessor) add(addendum_1, addendum_2 float64) (result float64) {
+	result = addendum_1 + addendum_2
 	return result
 }
 
