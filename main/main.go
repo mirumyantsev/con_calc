@@ -14,8 +14,12 @@ type Processing interface {
 }
 
 type InputProcessor struct {
-	value   string
-	binExpr string
+	value        string
+	expr         string
+	lowBound     int
+	highBound    int
+	closeBracket int
+	openBracket  int
 }
 
 func DoProcessing(ip *InputProcessor) {
@@ -30,15 +34,61 @@ func (ip *InputProcessor) valueProcessing() {
 	ip.deleteWhitespaces()
 	ip.deleteLineFeeds()
 	ip.checkUserWantQuit()
-	ip.calculationCycles()
+
+	ip.calculateBrackets()
 }
 
-func (ip *InputProcessor) calculationCycles() {
+func (ip *InputProcessor) calculateBrackets() {
 	lenOfValue := len(ip.value)
-	var highOps, lowOps int
+	var bracketOps int
 
 	for i := 0; i < lenOfValue; i++ {
 		char := string(ip.value[i])
+		if char == ")" {
+			bracketOps++
+		}
+	}
+
+	for bracketOps > 0 {
+		ip.performBracketOp()
+		bracketOps--
+	}
+
+	ip.expr = ip.value
+	ip.calculateExpr()
+	ip.value = ip.expr
+}
+
+func (ip *InputProcessor) performBracketOp() {
+	lenOfValue := len(ip.value)
+
+	for j := 0; j < lenOfValue; j++ {
+		char := string(ip.value[j])
+		if char == ")" {
+			ip.closeBracket = j
+
+			for i := j - 1; i >= 0; i-- {
+				char := string(ip.value[i])
+				if char == "(" {
+					ip.openBracket = i
+					break
+				}
+			}
+			break
+		}
+	}
+
+	ip.expr = ip.value[ip.openBracket+1 : ip.closeBracket]
+	ip.calculateExpr()
+	ip.value = ip.value[:ip.openBracket] + ip.expr + ip.value[ip.closeBracket+1:]
+}
+
+func (ip *InputProcessor) calculateExpr() {
+	lenOfExpr := len(ip.expr)
+	var highOps, lowOps int
+
+	for i := 0; i < lenOfExpr; i++ {
+		char := string(ip.expr[i])
 		if (char == "*") || (char == "/") {
 			highOps++
 		} else if (char == "-") || (char == "+") {
@@ -58,73 +108,75 @@ func (ip *InputProcessor) calculationCycles() {
 }
 
 func (ip *InputProcessor) performHighOp() {
-	lenOfValue := len(ip.value)
-	var lowBound, highBound, i int
+	lenOfExpr := len(ip.expr)
 
-	for j := 0; j < lenOfValue; j++ {
-		char := string(ip.value[j])
+	for j := 0; j < lenOfExpr; j++ {
+		char := string(ip.expr[j])
 		if (char == "*") || (char == "/") {
+			var i int
+
 			for i = j - 1; i >= 0; i-- {
-				char := string(ip.value[i])
+				char := string(ip.expr[i])
 				if (char == "-") || (char == "+") || (char == "*") || (char == "/") {
 					break
 				}
 			}
 			if i > 0 {
-				lowBound = i + 1
+				ip.lowBound = i + 1
 			} else {
-				lowBound = 0
+				ip.lowBound = 0
 			}
 
-			for i = j + 1; i < lenOfValue; i++ {
-				char := string(ip.value[i])
+			for i = j + 1; i < lenOfExpr; i++ {
+				char := string(ip.expr[i])
 				if (char == "-") || (char == "+") || (char == "*") || (char == "/") {
 					break
 				}
 			}
-			highBound = i - 1
+			ip.highBound = i - 1
 
 			break
 		}
 	}
 
-	binExpr := ip.doBinaryOp(ip.value[lowBound : highBound+1])
-	ip.value = ip.value[:lowBound] + binExpr + ip.value[highBound+1:]
+	binOp := ip.doBinaryOp(ip.expr[ip.lowBound : ip.highBound+1])
+	ip.expr = ip.expr[:ip.lowBound] + binOp + ip.expr[ip.highBound+1:]
 }
 
 func (ip *InputProcessor) performLowOp() {
-	lenOfValue := len(ip.value)
-	var lowBound, highBound, i int
+	lenOfExpr := len(ip.expr)
 
-	for j := 0; j < lenOfValue; j++ {
-		char := string(ip.value[j])
+	for j := 0; j < lenOfExpr; j++ {
+		char := string(ip.expr[j])
 		if (char == "-") || (char == "+") {
+			var i int
+
 			for i = j - 1; i >= 0; i-- {
-				char := string(ip.value[i])
+				char := string(ip.expr[i])
 				if (char == "-") || (char == "+") || (char == "*") || (char == "/") {
 					break
 				}
 			}
 			if i > 0 {
-				lowBound = i + 1
+				ip.lowBound = i + 1
 			} else {
-				lowBound = 0
+				ip.lowBound = 0
 			}
 
-			for i = j + 1; i < lenOfValue; i++ {
-				char := string(ip.value[i])
+			for i = j + 1; i < lenOfExpr; i++ {
+				char := string(ip.expr[i])
 				if (char == "-") || (char == "+") || (char == "*") || (char == "/") {
 					break
 				}
 			}
-			highBound = i - 1
+			ip.highBound = i - 1
 
 			break
 		}
 	}
 
-	binExpr := ip.doBinaryOp(ip.value[lowBound : highBound+1])
-	ip.value = ip.value[:lowBound] + binExpr + ip.value[highBound+1:]
+	binOp := ip.doBinaryOp(ip.expr[ip.lowBound : ip.highBound+1])
+	ip.expr = ip.expr[:ip.lowBound] + binOp + ip.expr[ip.highBound+1:]
 }
 
 func (ip *InputProcessor) doBinaryOp(binExpr string) (result string) {
@@ -207,6 +259,7 @@ func (ip *InputProcessor) deleteWhitespaces() {
 }
 
 func (ip *InputProcessor) valuePrinting() {
+	fmt.Println("Результат:")
 	fmt.Println(ip.value)
 }
 
