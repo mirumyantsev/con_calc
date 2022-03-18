@@ -6,6 +6,8 @@ import (
 	"math"
 	"os"
 	"strconv"
+
+	"github.com/mikerumy/concalc/consts"
 )
 
 type Processing interface {
@@ -15,7 +17,7 @@ type Processing interface {
 }
 
 type InputProcessor struct {
-	availableOps  [6]string
+	availOps      [6]string
 	errors        [5]string
 	errNo         int
 	value         string
@@ -24,12 +26,10 @@ type InputProcessor struct {
 	highBound     int
 	closeBrackets int
 	openBracket   int
-	pi            string
-	e             string
 }
 
-func DoProcessing(ip *InputProcessor) {
-	ip.availableOps = [6]string{"+", "-", "*", "/", "^", "%"}
+func (ip *InputProcessor) DoProcessing() {
+	ip.availOps = [6]string{"+", "-", "*", "/", "^", "%"}
 	ip.errors = [5]string{
 		"введен неверный символ.",
 		"количество открывающих скобок не равно количеству закрывающих.",
@@ -37,9 +37,6 @@ func DoProcessing(ip *InputProcessor) {
 		"ошибка в записи числа.",
 		"на ноль делить нельзя.",
 	}
-
-	ip.pi = "3.141592653589793"
-	ip.e = "2.718281828459045"
 
 	for {
 		ip.errNo = 0
@@ -61,44 +58,44 @@ func (ip *InputProcessor) valueProcessing() {
 }
 
 func (ip *InputProcessor) constantConverter() {
+	consts.Init()
+
 	var piCount, eCount int
 
-	for i := 0; i < len(ip.value)-1; i++ {
-		char1 := string(ip.value[i])
-		char2 := string(ip.value[i+1])
-		if (char1 == "p") || (char2 == "i") {
-			piCount++
-		}
-	}
-
 	for i := 0; i < len(ip.value); i++ {
-		char1 := string(ip.value[i])
-		if char1 == "e" {
+		char := string(ip.value[i])
+		if char == "e" {
 			eCount++
 		}
 	}
 
-	for piCount > 0 {
-		for i := 0; i < len(ip.value)-1; i++ {
-			char1 := string(ip.value[i])
-			char2 := string(ip.value[i+1])
-			if (char1 == "p") || (char2 == "i") {
-				ip.value = ip.value[:i] + ip.pi + ip.value[i+2:]
-				break
-			}
+	for i := 0; i < len(ip.value)-1; i++ {
+		word := string(ip.value[i : i+2])
+		if word == "pi" {
+			piCount++
 		}
-		piCount--
 	}
 
 	for eCount > 0 {
 		for i := 0; i < len(ip.value); i++ {
-			char1 := string(ip.value[i])
-			if char1 == "e" {
-				ip.value = ip.value[:i] + ip.e + ip.value[i+1:]
+			char := string(ip.value[i])
+			if char == "e" {
+				ip.value = ip.value[:i] + consts.Values["e"] + ip.value[i+1:]
 				break
 			}
 		}
 		eCount--
+	}
+
+	for piCount > 0 {
+		for i := 0; i < len(ip.value)-1; i++ {
+			word := string(ip.value[i : i+2])
+			if word == "pi" {
+				ip.value = ip.value[:i] + consts.Values["pi"] + ip.value[i+2:]
+				break
+			}
+		}
+		piCount--
 	}
 }
 
@@ -171,34 +168,34 @@ func (ip *InputProcessor) calculateExpr() {
 
 	for i := 0; i < lenOfExpr; i++ {
 		char := string(ip.expr[i])
-		if char == ip.availableOps[4] {
+		if char == ip.availOps[4] {
 			highestOps++
-		} else if (char == ip.availableOps[2]) || (char == ip.availableOps[3]) {
+		} else if (char == ip.availOps[2]) || (char == ip.availOps[3]) {
 			highOps++
-		} else if (char == ip.availableOps[0]) || (char == ip.availableOps[1]) {
+		} else if (char == ip.availOps[0]) || (char == ip.availOps[1]) {
 			lowOps++
-		} else if char == ip.availableOps[5] {
+		} else if char == ip.availOps[5] {
 			lowestOps++
 		}
 	}
 
 	for highestOps > 0 {
-		ip.performOp([]string{ip.availableOps[4]})
+		ip.performOp([]string{ip.availOps[4]})
 		highestOps--
 	}
 
 	for highOps > 0 {
-		ip.performOp([]string{ip.availableOps[2], ip.availableOps[3]})
+		ip.performOp([]string{ip.availOps[2], ip.availOps[3]})
 		highOps--
 	}
 
 	for lowOps > 0 {
-		ip.performOp([]string{ip.availableOps[0], ip.availableOps[1]})
+		ip.performOp([]string{ip.availOps[0], ip.availOps[1]})
 		lowOps--
 	}
 
 	for lowestOps > 0 {
-		ip.performOp([]string{ip.availableOps[5]})
+		ip.performOp([]string{ip.availOps[5]})
 		lowestOps--
 	}
 }
@@ -272,18 +269,22 @@ func (ip *InputProcessor) doBinaryOp(binExpr string) (result string) {
 	}
 
 	switch operatorChar {
-	case ip.availableOps[0]:
-		resultf = ip.add(operand_1f, operand_2f)
-	case ip.availableOps[1]:
-		resultf = ip.subtract(operand_1f, operand_2f)
-	case ip.availableOps[2]:
-		resultf = ip.multiply(operand_1f, operand_2f)
-	case ip.availableOps[3]:
-		resultf = ip.divide(operand_1f, operand_2f)
-	case ip.availableOps[4]:
-		resultf = ip.power(operand_1f, operand_2f)
-	case ip.availableOps[5]:
-		resultf = ip.modulo(operand_1f, operand_2f)
+	case ip.availOps[0]:
+		resultf = operand_1f + operand_2f
+	case ip.availOps[1]:
+		resultf = operand_1f - operand_2f
+	case ip.availOps[2]:
+		resultf = operand_1f * operand_2f
+	case ip.availOps[3]:
+		if operand_2f != 0.0 {
+			resultf = operand_1f / operand_2f
+		} else {
+			ip.errNo = 5
+		}
+	case ip.availOps[4]:
+		resultf = math.Pow(operand_1f, operand_2f)
+	case ip.availOps[5]:
+		resultf = math.Mod(operand_1f, operand_2f)
 	default:
 		ip.errNo = 1
 	}
@@ -292,7 +293,7 @@ func (ip *InputProcessor) doBinaryOp(binExpr string) (result string) {
 }
 
 func (ip *InputProcessor) isAvailableOp(op string) bool {
-	for _, availableOp := range ip.availableOps {
+	for _, availableOp := range ip.availOps {
 		if availableOp == op {
 			return true
 		}
@@ -309,35 +310,6 @@ func (ip *InputProcessor) isAvailableDigit(char string) bool {
 		}
 	}
 	return false
-}
-
-func (ip *InputProcessor) modulo(operand_1, operand_2 float64) float64 {
-	return math.Mod(operand_1, operand_2)
-}
-
-func (ip *InputProcessor) power(operand_1, operand_2 float64) float64 {
-	return math.Pow(operand_1, operand_2)
-}
-
-func (ip *InputProcessor) divide(operand_1, operand_2 float64) float64 {
-	if operand_2 != 0.0 {
-		return operand_1 / operand_2
-	} else {
-		ip.errNo = 5
-		return 0.0
-	}
-}
-
-func (ip *InputProcessor) multiply(operand_1, operand_2 float64) float64 {
-	return operand_1 * operand_2
-}
-
-func (ip *InputProcessor) subtract(operand_1, operand_2 float64) float64 {
-	return operand_1 - operand_2
-}
-
-func (ip *InputProcessor) add(operand_1, operand_2 float64) float64 {
-	return operand_1 + operand_2
 }
 
 func (ip *InputProcessor) checkUserWantQuit() {
@@ -384,6 +356,6 @@ func (ip *InputProcessor) valueInputing() {
 }
 
 func main() {
-	S := InputProcessor{}
-	DoProcessing(&S)
+	var S InputProcessor
+	S.DoProcessing()
 }
