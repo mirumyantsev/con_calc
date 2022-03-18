@@ -43,11 +43,6 @@ func DoProcessing(ip *InputProcessor) {
 
 	for {
 		ip.errNo = 0
-		ip.expr = ""
-		ip.lowBound = 0
-		ip.highBound = 0
-		ip.closeBrackets = 0
-		ip.openBracket = 0
 
 		ip.valueInputing()
 		ip.valueProcessing()
@@ -60,7 +55,7 @@ func (ip *InputProcessor) valueProcessing() {
 	ip.deleteLineFeeds()
 	ip.checkUserWantQuit()
 	ip.constantConverter()
-	if !(ip.hasWrongChars()) {
+	if !ip.hasWrongChars() {
 		ip.calculateBrackets()
 	}
 }
@@ -172,70 +167,55 @@ func (ip *InputProcessor) performBracketOp() {
 
 func (ip *InputProcessor) calculateExpr() {
 	lenOfExpr := len(ip.expr)
-	var highOps, lowOps int
+	var lowestOps, lowOps, highOps, highestOps int
 
 	for i := 0; i < lenOfExpr; i++ {
 		char := string(ip.expr[i])
-		if (char == ip.availableOps[2]) || (char == ip.availableOps[3]) || (char == ip.availableOps[4]) || (char == ip.availableOps[5]) {
+		if char == ip.availableOps[4] {
+			highestOps++
+		} else if (char == ip.availableOps[2]) || (char == ip.availableOps[3]) {
 			highOps++
 		} else if (char == ip.availableOps[0]) || (char == ip.availableOps[1]) {
 			lowOps++
+		} else if char == ip.availableOps[5] {
+			lowestOps++
 		}
 	}
 
+	for highestOps > 0 {
+		ip.performOp([]string{ip.availableOps[4]})
+		highestOps--
+	}
+
 	for highOps > 0 {
-		ip.performHighOp()
+		ip.performOp([]string{ip.availableOps[2], ip.availableOps[3]})
 		highOps--
 	}
 
 	for lowOps > 0 {
-		ip.performLowOp()
+		ip.performOp([]string{ip.availableOps[0], ip.availableOps[1]})
 		lowOps--
 	}
-}
 
-func (ip *InputProcessor) performHighOp() {
-	lenOfExpr := len(ip.expr)
-
-	for j := 0; j < lenOfExpr; j++ {
-		char := string(ip.expr[j])
-		if (char == ip.availableOps[2]) || (char == ip.availableOps[3]) || (char == ip.availableOps[4]) || (char == ip.availableOps[5]) {
-			var i int
-
-			for i = j - 1; i >= 0; i-- {
-				char := string(ip.expr[i])
-				if ip.isAvailableOp(char) {
-					break
-				}
-			}
-			if i > 0 {
-				ip.lowBound = i + 1
-			} else {
-				ip.lowBound = 0
-			}
-
-			for i = j + 1; i < lenOfExpr; i++ {
-				char := string(ip.expr[i])
-				if ip.isAvailableOp(char) {
-					break
-				}
-			}
-			ip.highBound = i - 1
-
-			break
-		}
+	for lowestOps > 0 {
+		ip.performOp([]string{ip.availableOps[5]})
+		lowestOps--
 	}
-
-	binOp := ip.doBinaryOp(ip.expr[ip.lowBound : ip.highBound+1])
-	ip.expr = ip.expr[:ip.lowBound] + binOp + ip.expr[ip.highBound+1:]
 }
 
-func (ip *InputProcessor) performLowOp() {
+func (ip *InputProcessor) performOp(availOps []string) {
 	lenOfExpr := len(ip.expr)
+	var passToDoOp bool
 
 	for j := 0; j < lenOfExpr; j++ {
 		char := string(ip.expr[j])
-		if (char == ip.availableOps[0]) || (char == ip.availableOps[1]) {
+		for _, op := range availOps {
+			if char == op {
+				passToDoOp = true
+			}
+		}
+
+		if passToDoOp {
 			var i int
 
 			for i = j - 1; i >= 0; i-- {
