@@ -6,6 +6,7 @@ import (
 	"math"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/mikerumy/concalc/consts"
 )
@@ -48,8 +49,6 @@ func (ip *InputProcessor) DoProcessing() {
 }
 
 func (ip *InputProcessor) valueProcessing() {
-	ip.deleteWhitespaces()
-	ip.deleteLineFeeds()
 	ip.checkUserWantQuit()
 	ip.constantConverter()
 	if !ip.hasWrongChars() {
@@ -266,6 +265,7 @@ func (ip *InputProcessor) doBinaryOp(binExpr string) (result string) {
 
 	if err != nil {
 		ip.errNo = 4
+		return ""
 	}
 
 	switch operatorChar {
@@ -280,6 +280,7 @@ func (ip *InputProcessor) doBinaryOp(binExpr string) (result string) {
 			resultf = operand_1f / operand_2f
 		} else {
 			ip.errNo = 5
+			return ""
 		}
 	case ip.availOps[4]:
 		resultf = math.Pow(operand_1f, operand_2f)
@@ -287,9 +288,13 @@ func (ip *InputProcessor) doBinaryOp(binExpr string) (result string) {
 		resultf = math.Mod(operand_1f, operand_2f)
 	default:
 		ip.errNo = 1
+		return ""
 	}
 
-	return fmt.Sprintf("%.3f", resultf)
+	if math.Mod(resultf, 1.0) > 0.0 {
+		return strconv.FormatFloat(resultf, 'f', 15, 64)
+	}
+	return fmt.Sprintf("%.0f", resultf)
 }
 
 func (ip *InputProcessor) isAvailableOp(op string) bool {
@@ -318,41 +323,39 @@ func (ip *InputProcessor) checkUserWantQuit() {
 	}
 }
 
-func (ip *InputProcessor) deleteLineFeeds() {
-	ip.value = ip.value[:len(ip.value)-1]
-}
-
-func (ip *InputProcessor) deleteWhitespaces() {
-	var tempStr string
-
-	for i := 0; i < len(ip.value); i++ {
-		char := string(ip.value[i])
-		if char != " " {
-			tempStr += char
-		}
-	}
-
-	ip.value = tempStr
-}
-
 func (ip *InputProcessor) valuePrinting() {
 	if ip.errNo > 0 {
-		fmt.Printf("Ошибка: \n- %s\n", ip.errors[ip.errNo-1])
+		fmt.Printf("Ошибка: %s\n", ip.errors[ip.errNo-1])
 		return
 	}
-	fmt.Println("Результат:")
+	if strings.Contains(ip.value, ".") {
+		for {
+			if string(ip.value[len(ip.value) - 1]) == "0" {
+				ip.value = ip.value[:len(ip.value)-1]
+			} else {
+				break
+			}
+		}
+	}
+	if ip.value == "0." || ip.value == "." {
+		ip.value = "0"
+	}
 	fmt.Println(ip.value)
 }
 
 func (ip *InputProcessor) valueInputing() {
 	reader := bufio.NewReader(os.Stdin)
-	fmt.Println("Введите выражение:")
+	fmt.Print("> ")
 	var err error
 	ip.value, err = reader.ReadString('\n')
 	if err != nil {
 		ip.errNo = 3
+		ip.valuePrinting()
 	}
-
+	ip.value = strings.Replace(ip.value, " ", "", -1)
+	ip.value = strings.Replace(ip.value, "\r", "", -1)
+	ip.value = strings.Replace(ip.value, "\n", "", -1)
+	ip.value = strings.Replace(ip.value, ",", ".", -1)
 }
 
 func main() {
