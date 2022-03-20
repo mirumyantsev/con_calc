@@ -49,52 +49,65 @@ func (ip *InputProcessor) DoProcessing() {
 }
 
 func (ip *InputProcessor) valueProcessing() {
-	ip.checkUserWantQuit()
+	if (ip.value == "q") || (ip.value == "exit") {
+		os.Exit(0)
+	}
+
 	ip.constantConverter()
+
 	if !ip.hasWrongChars() {
-		ip.calculateBrackets()
+		lenOfValue := len(ip.value)
+		var openBrackets, closeBrackets int
+
+		for i := 0; i < lenOfValue; i++ {
+			char := string(ip.value[i])
+			if char == ")" {
+				closeBrackets++
+			} else if char == "(" {
+				openBrackets++
+			}
+		}
+
+		if openBrackets != closeBrackets {
+			ip.errNo = 2
+			return
+		}
+
+		for closeBrackets > 0 {
+			ip.performBracketOp()
+			closeBrackets--
+		}
+
+		ip.expr = ip.value
+		ip.calculateExpr()
+		ip.value = ip.expr
 	}
 }
 
 func (ip *InputProcessor) constantConverter() {
 	consts.Init()
 
-	var piCount, eCount int
+	for cName, cVal := range consts.Values {
+		var cCount int
+		var cNameLen, valueLen int = len(cName), len(ip.value)
 
-	for i := 0; i < len(ip.value); i++ {
-		char := string(ip.value[i])
-		if char == "e" {
-			eCount++
-		}
-	}
-
-	for i := 0; i < len(ip.value)-1; i++ {
-		word := string(ip.value[i : i+2])
-		if word == "pi" {
-			piCount++
-		}
-	}
-
-	for eCount > 0 {
-		for i := 0; i < len(ip.value); i++ {
-			char := string(ip.value[i])
-			if char == "e" {
-				ip.value = ip.value[:i] + consts.Values["e"] + ip.value[i+1:]
-				break
+		for i := 0; i < valueLen-(cNameLen-1); i++ {
+			var word string = ip.value[i : i+cNameLen]
+			if word == cName {
+				cCount++
 			}
 		}
-		eCount--
-	}
 
-	for piCount > 0 {
-		for i := 0; i < len(ip.value)-1; i++ {
-			word := string(ip.value[i : i+2])
-			if word == "pi" {
-				ip.value = ip.value[:i] + consts.Values["pi"] + ip.value[i+2:]
-				break
+		for cCount > 0 {
+			for i := 0; i < valueLen-(cNameLen-1); i++ {
+				var word string = ip.value[i : i+cNameLen]
+				if word == cName {
+					ip.value = ip.value[:i] + cVal + ip.value[i+cNameLen:]
+					break
+				}
 			}
+			cCount--
 		}
-		piCount--
 	}
 }
 
@@ -107,34 +120,6 @@ func (ip *InputProcessor) hasWrongChars() bool {
 		}
 	}
 	return false
-}
-
-func (ip *InputProcessor) calculateBrackets() {
-	lenOfValue := len(ip.value)
-	var openBrackets, closeBrackets int
-
-	for i := 0; i < lenOfValue; i++ {
-		char := string(ip.value[i])
-		if char == ")" {
-			closeBrackets++
-		} else if char == "(" {
-			openBrackets++
-		}
-	}
-
-	if openBrackets != closeBrackets {
-		ip.errNo = 2
-		return
-	}
-
-	for closeBrackets > 0 {
-		ip.performBracketOp()
-		closeBrackets--
-	}
-
-	ip.expr = ip.value
-	ip.calculateExpr()
-	ip.value = ip.expr
 }
 
 func (ip *InputProcessor) performBracketOp() {
@@ -199,13 +184,13 @@ func (ip *InputProcessor) calculateExpr() {
 	}
 }
 
-func (ip *InputProcessor) performOp(availOps []string) {
+func (ip *InputProcessor) performOp(opsToCalc []string) {
 	lenOfExpr := len(ip.expr)
 	var passToDoOp bool
 
 	for j := 0; j < lenOfExpr; j++ {
 		char := string(ip.expr[j])
-		for _, op := range availOps {
+		for _, op := range opsToCalc {
 			if char == op {
 				passToDoOp = true
 			}
@@ -257,11 +242,11 @@ func (ip *InputProcessor) doBinaryOp(binExpr string) (result string) {
 		}
 	}
 
-	operand_1 := binExpr[:operatorPos]
-	operand_2 := binExpr[operatorPos+1:]
+	operand1 := binExpr[:operatorPos]
+	operand2 := binExpr[operatorPos+1:]
 
-	operand_1f, err := strconv.ParseFloat(operand_1, 64)
-	operand_2f, err := strconv.ParseFloat(operand_2, 64)
+	operand1f, err := strconv.ParseFloat(operand1, 64)
+	operand2f, err := strconv.ParseFloat(operand2, 64)
 
 	if err != nil {
 		ip.errNo = 4
@@ -270,22 +255,22 @@ func (ip *InputProcessor) doBinaryOp(binExpr string) (result string) {
 
 	switch operatorChar {
 	case ip.availOps[0]:
-		resultf = operand_1f + operand_2f
+		resultf = operand1f + operand2f
 	case ip.availOps[1]:
-		resultf = operand_1f - operand_2f
+		resultf = operand1f - operand2f
 	case ip.availOps[2]:
-		resultf = operand_1f * operand_2f
+		resultf = operand1f * operand2f
 	case ip.availOps[3]:
-		if operand_2f != 0.0 {
-			resultf = operand_1f / operand_2f
+		if operand2f != 0.0 {
+			resultf = operand1f / operand2f
 		} else {
 			ip.errNo = 5
 			return ""
 		}
 	case ip.availOps[4]:
-		resultf = math.Pow(operand_1f, operand_2f)
+		resultf = math.Pow(operand1f, operand2f)
 	case ip.availOps[5]:
-		resultf = math.Mod(operand_1f, operand_2f)
+		resultf = math.Mod(operand1f, operand2f)
 	default:
 		ip.errNo = 1
 		return ""
@@ -315,12 +300,6 @@ func (ip *InputProcessor) isAvailableDigit(char string) bool {
 		}
 	}
 	return false
-}
-
-func (ip *InputProcessor) checkUserWantQuit() {
-	if (ip.value == "q") || (ip.value == "exit") {
-		os.Exit(0)
-	}
 }
 
 func (ip *InputProcessor) valuePrinting() {
