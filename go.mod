@@ -1,3 +1,3 @@
-module github.com/mikerumy/concalc
+module github.com/mirumyantsev/concalc
 
 go 1.18

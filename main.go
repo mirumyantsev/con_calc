@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/mikerumy/concalc/consts"
+	"github.com/mirumyantsev/concalc/consts"
 )
 
 type Processing interface {
